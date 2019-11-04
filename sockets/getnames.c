@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     addrs = hostinfo->h_addr_list;
     while (*addrs)
     {
-        printf("%s", inet_ntoa(*(struct in_addr *) addrs));
+        printf("%s ", inet_ntoa(*(struct in_addr *) *addrs));
         addrs++;
     }
     printf("\n");
