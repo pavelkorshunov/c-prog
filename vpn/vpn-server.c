@@ -42,13 +42,52 @@
 
 static int get_interface(char *name)
 {
+    struct ifreq ifr;
+
     int interface = open("/dev/net/tun", O_RDWR | O_NONBLOCK);
+
+    if(interface < 0) {
+        perror("Cannot open /dev/net/tun");
+        exit(1);
+    }
+    
+    memset(&ifr, 0, sizeof(ifr));
+
+    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+
+    strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+
+    if (ioctl(interface, TUNSETIFF, &ifr)) {
+        perror("Cannot get TUN interface");
+        exit(1);
+    }
+
     return interface;
 }
 #else
 #error Sorry, you have to implement this part by yourself.
 #endif
 
-int main() {
-    printf("Hello\n");
+int main(int argc, char **argv) {
+    if (argc < 5) {
+        printf("Usage: %s <tunN> <port> <secret> options...\n"
+               "\n"
+               "Options:\n"
+               "  -m <MTU> for the maximum transmission unit\n"
+               "  -a <address> <prefix-length> for the private address\n"
+               "  -r <address> <prefix-length> for the forwarding route\n"
+               "  -d <address> for the domain name server\n"
+               "  -s <domain> for the search domain\n"
+               "\n"
+               "Note that TUN interface needs to be configured properly\n"
+               "BEFORE running this program. For more information, please\n"
+               "read the comments in the source code.\n\n", argv[0]);
+        exit(1);
+    }
+
+    // for(int i = 0; i < argc; i++) {
+    //     printf("%s\n", argv[i]);
+    // }
+
+    return 0;
 };
