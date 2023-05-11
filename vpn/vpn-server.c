@@ -46,13 +46,23 @@ static int get_interface(char *name)
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        printf("Usage: %s <interface>\n", argv[0]);
+        printf("Usage: %s <path to file>\n", argv[0]);
         exit(1);
     }
 
-    for(int i = 0; i < argc; i++) {
-        printf("%s\n", argv[i]);
+    int interface = open(argv[1], O_RDWR | O_NONBLOCK);
+
+    if(interface < 0) {
+        char err[100];
+        sprintf(err, "Cannot open %s\n", argv[1]);
+        perror(err);
+
+        exit(1);
+    } else {
+        printf("Interface %s open\n", argv[1]);
     }
+
+    close(interface);
 
     return 0;
 };
