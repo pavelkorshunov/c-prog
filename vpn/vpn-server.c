@@ -6,9 +6,6 @@
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <errno.h>
 #include <fcntl.h>
 
 #ifdef __linux__
@@ -40,9 +37,22 @@ static int get_interface(char *name)
 
     return interface;
 }
+
 #else
 #error Sorry, you have to implement this part by yourself.
 #endif
+
+static int get_socket() {
+    int sockfd;
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(sockfd < 0) {
+        perror("Cannot open socket");
+        exit(1);
+    }
+
+    return sockfd;
+};
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -50,19 +60,26 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    int interface = open(argv[1], O_RDWR | O_NONBLOCK);
+    int sockfd;
+    struct ifreq ifr;
+    struct sockaddr_in *address;
+    char *if_name = argv[1];
 
-    if(interface < 0) {
-        char err[100];
-        sprintf(err, "Cannot open %s\n", argv[1]);
-        perror(err);
+    sockfd = get_socket();
 
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, if_name, sizeof(if_name));
+
+    if (ioctl(sockfd, SIOCGIFADDR, &ifr)) {
+        perror("Cannot get IP address");
         exit(1);
-    } else {
-        printf("Interface %s open\n", argv[1]);
     }
 
-    close(interface);
+    address = (struct sockaddr_in *) &ifr.ifr_addr;
+
+    printf("Interface %s. IP address %s\n", if_name, inet_ntoa(address->sin_addr));
+
+    close(sockfd);
 
     return 0;
 };
