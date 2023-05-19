@@ -3,16 +3,20 @@
  *
  * Created by Pavel K
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <fcntl.h>
-#include <linux/if.h>
-#include <linux/if_tun.h>
+#include <stdio.h> // printf()
+#include <stdlib.h> // exit()
+#include <string.h> // strcpy(), memset(), and memcpy()
+#include <unistd.h> // close()
+#include <sys/stat.h> // O_RDWR
+#include <sys/types.h> // mode_t for 3 argument in open() function
+#include <sys/ioctl.h> // ioctl()
+#include <fcntl.h> // open()
+#include <linux/if.h> // struct ifreq
+#include <linux/if_tun.h> // TUNSETIFF
+
+// Headers
+#define IP4_HDRLEN 20 // IPv4 header length
+#define ICMP_HDRLEN 8 // ICMP header length
 
 // # Create a TUN interface.
 // ip tuntap add dev tun0 mode tun
@@ -22,8 +26,8 @@
 //
 // ip link set tun0 up
 //
-// Run ping 192.168.0.1
 // Run ./a.out
+// Run ping 192.168.0.2
 //
 // # Clear after testing
 // ip addr del 192.168.0.1/24 dev tun0
@@ -93,7 +97,7 @@ int main(void)
     /* Now read data coming from the kernel */
     while(1) {
         /* Note that "buffer" should be at least the MTU size of the interface, eg 1500 bytes */
-        int nread = read(tun_fd, buffer, sizeof(buffer));
+        ssize_t nread = read(tun_fd, buffer, sizeof(buffer));
         if(nread < 0) {
             perror("Reading from interface");
             close(tun_fd);
@@ -101,6 +105,8 @@ int main(void)
         }
 
         /* Do whatever with the data */
-        printf("Read %d bytes from device %s\n", nread, tun_name);
+        printf("Read %ld bytes from device %s\n", nread, tun_name);
     }
+
+    return 0;
 }
