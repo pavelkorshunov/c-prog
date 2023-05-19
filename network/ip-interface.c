@@ -7,40 +7,8 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <fcntl.h>
-
-#ifdef __linux__
-
 #include <net/if.h>
 #include <linux/if_tun.h>
-
-static int get_interface(char *name)
-{
-    struct ifreq ifr;
-
-    int interface = open("/dev/net/tun", O_RDWR | O_NONBLOCK);
-
-    if(interface < 0) {
-        perror("Cannot open /dev/net/tun");
-        exit(1);
-    }
-    
-    memset(&ifr, 0, sizeof(ifr));
-
-    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-
-    strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
-
-    if (ioctl(interface, TUNSETIFF, &ifr)) {
-        perror("Cannot get TUN interface");
-        exit(1);
-    }
-
-    return interface;
-}
-
-#else
-#error Sorry, you have to implement this part by yourself.
-#endif
 
 static int get_socket() {
     int sockfd;
