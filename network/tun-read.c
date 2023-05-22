@@ -87,8 +87,6 @@ int main(void)
     char buffer[1500];
     char tun_name[IFNAMSIZ];
 
-    struct sockaddr_in *address;
-
     /* Connect to the device */
     strcpy(tun_name, "tun0");
     int tun_fd = tun_alloc(tun_name, IFF_TUN | IFF_NO_PI);  /* tun interface */
@@ -111,10 +109,9 @@ int main(void)
         /* Do whatever with the data */
         printf("Read %ld bytes from device %s\n", nread, tun_name);
 
-        address = (struct sockaddr_in*) buffer;
-
-        printf("sin_port %hu\n", ntohs(address->sin_port));
-        printf("sin_addr.s_addr %s\n", inet_ntoa(address->sin_addr));
+        for(int i = 0; i < (int) nread; i++) {
+            printf("Byte %d %hhx\n", i, buffer[i]);
+        }
     }
 
     return 0;
