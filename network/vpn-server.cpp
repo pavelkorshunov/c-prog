@@ -35,6 +35,17 @@
 // # Create a server on port 8000 with shared secret "test".
 // ./a.out tun0 8000 test -m 1400 -a 10.0.0.2 32 -d 8.8.8.8 -r 0.0.0.0 0
 //
+// # Send upd data
+// echo -n "123" | nc -u -w1  127.0.0.1 8000
+// the right secret 
+// echo -n -e '\x0test' | nc -u -w1  127.0.0.1 8000
+//
+// nc -nvu 127.0.0.1 8000
+// send string
+//
+// # Test port
+// nc -nvzu 127.0.0.1 8000
+//
 // This program only handles a session at a time. To allow multiple sessions,
 // multiple servers can be created on the same port, but each of them requires
 // its own TUN interface. A short shell script will be sufficient. Since this
@@ -69,11 +80,13 @@ static int get_tunnel(char *port, char *secret)
     setsockopt(tunnel, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
     flag = 0;
     setsockopt(tunnel, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag));
+
     // Accept packets received on any local address.
     sockaddr_in6 addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin6_family = AF_INET6;
     addr.sin6_port = htons(atoi(port));
+
     // Call bind(2) in a loop since Linux does not have SO_REUSEPORT.
     while (bind(tunnel, (sockaddr *)&addr, sizeof(addr))) {
         if (errno != EADDRINUSE) {
@@ -81,18 +94,25 @@ static int get_tunnel(char *port, char *secret)
         }
         usleep(100000);
     }
+
     // Receive packets till the secret matches.
     char packet[1024];
     socklen_t addrlen;
     do {
         addrlen = sizeof(addr);
-        int n = recvfrom(tunnel, packet, sizeof(packet), 0,
-                         (sockaddr *)&addr, &addrlen);
+        int n = recvfrom(tunnel, packet, sizeof(packet), 0, (sockaddr *)&addr, &addrlen);
+
+        // printf("Read bytes %d from tunnel. Bytes payload: %s\n", n, packet);
+
         if (n <= 0) {
             return -1;
         }
         packet[n] = 0;
+
+        printf("Read bytes %d from tunnel. Bytes payload: %s\n", n, packet);
+
     } while (packet[0] != 0 || strcmp(secret, &packet[1]));
+
     // Connect to the client as we only handle one client at a time.
     connect(tunnel, (sockaddr *)&addr, addrlen);
 
@@ -107,24 +127,29 @@ static void build_parameters(char *parameters, int size, int argc, char **argv)
         char *parameter = argv[i];
         int length = strlen(parameter);
         char delimiter = ',';
+
         // If it looks like an option, prepend a space instead of a comma.
         if (length == 2 && parameter[0] == '-') {
             ++parameter;
             --length;
             delimiter = ' ';
         }
+
         // This is just a demo app, really.
         if (offset + length >= size) {
             puts("Parameters are too large");
             exit(1);
         }
+
         // Append the delimiter and the parameter.
         parameters[offset] = delimiter;
         memcpy(&parameters[offset + 1], parameter, length);
         offset += 1 + length;
     }
+
     // Fill the rest of the space with spaces.
     memset(&parameters[offset], ' ', size - offset);
+
     // Control messages always start with zero.
     parameters[0] = 0;
 }
@@ -147,13 +172,16 @@ int main(int argc, char **argv)
                "read the comments in the source code.\n\n", argv[0]);
         exit(1);
     }
+
     // Parse the arguments and set the parameters.
     char parameters[1024];
     build_parameters(parameters, sizeof(parameters), argc, argv);
+
     // Get TUN interface.
     int interface = get_interface(argv[1]);
     // Wait for a tunnel.
     int tunnel;
+
     while ((tunnel = get_tunnel(argv[2], argv[3])) != -1) {
         printf("%s: Here comes a new tunnel\n", argv[1]);
         // On UN*X, there are many ways to deal with multiple file
@@ -163,16 +191,20 @@ int main(int argc, char **argv)
         // be easily compared side by side.
         // Put the tunnel into non-blocking mode.
         fcntl(tunnel, F_SETFL, O_NONBLOCK);
+
         // Send the parameters several times in case of packet loss.
         for (int i = 0; i < 3; ++i) {
             send(tunnel, parameters, sizeof(parameters), MSG_NOSIGNAL);
         }
+
         // Allocate the buffer for a single packet.
         char packet[32767];
         // We use a timer to determine the status of the tunnel. It
         // works on both sides. A positive value means sending, and
         // any other means receiving. We start with receiving.
+
         int timer = 0;
+
         // We keep forwarding packets till something goes wrong.
         while (true) {
             // Assume that we did not make any progress in this iteration.
@@ -234,6 +266,7 @@ int main(int argc, char **argv)
         printf("%s: The tunnel is broken\n", argv[1]);
         close(tunnel);
     }
+
     perror("Cannot create tunnels");
     exit(1);
 }
