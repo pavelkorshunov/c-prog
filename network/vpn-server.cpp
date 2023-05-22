@@ -39,6 +39,7 @@
 // echo -n "123" | nc -u -w1  127.0.0.1 8000
 // the right secret 
 // echo -n -e '\x0test' | nc -u -w1  127.0.0.1 8000
+// echo -n -e '\0test' | nc -u -w1  127.0.0.1 8000
 //
 // nc -nvu 127.0.0.1 8000
 // send string
