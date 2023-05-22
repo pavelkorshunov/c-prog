@@ -15,7 +15,7 @@
 // # Run server on <port>.
 // ./a.out 8000
 // 
-// # Test
+// # Test. TODO порт не нужен в данном случае можно убрать
 // ping -c 1 127.0.0.1
 
 static int get_tunnel(char *port)
