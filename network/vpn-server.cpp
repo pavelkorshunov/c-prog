@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+
 #ifdef __linux__
 // There are several ways to play with this program. Here we just give an
 // example for the simplest scenario. Let us say that a Linux box has a
@@ -27,6 +28,9 @@
 //
 // # Set the addresses and bring up the interface.
 // ifconfig tun0 10.0.0.1 dstaddr 10.0.0.2 up
+// or
+// ip addr add 10.0.0.1 peer 10.0.0.2 dev tun0
+// ip link set tun0 up
 //
 // # Create a server on port 8000 with shared secret "test".
 // ./a.out tun0 8000 test -m 1400 -a 10.0.0.2 32 -d 8.8.8.8 -r 0.0.0.0 0
@@ -38,6 +42,7 @@
 // authentication nor encryption. DO NOT USE IT IN PRODUCTION!
 #include <net/if.h>
 #include <linux/if_tun.h>
+
 static int get_interface(char *name)
 {
     int interface = open("/dev/net/tun", O_RDWR | O_NONBLOCK);
@@ -49,11 +54,13 @@ static int get_interface(char *name)
         perror("Cannot get TUN interface");
         exit(1);
     }
+    
     return interface;
 }
 #else
 #error Sorry, you have to implement this part by yourself.
 #endif
+
 static int get_tunnel(char *port, char *secret)
 {
     // We use an IPv6 socket to cover both IPv4 and IPv6.
@@ -88,8 +95,10 @@ static int get_tunnel(char *port, char *secret)
     } while (packet[0] != 0 || strcmp(secret, &packet[1]));
     // Connect to the client as we only handle one client at a time.
     connect(tunnel, (sockaddr *)&addr, addrlen);
+
     return tunnel;
 }
+
 static void build_parameters(char *parameters, int size, int argc, char **argv)
 {
     // Well, for simplicity, we just concatenate them (almost) blindly.
@@ -119,6 +128,7 @@ static void build_parameters(char *parameters, int size, int argc, char **argv)
     // Control messages always start with zero.
     parameters[0] = 0;
 }
+
 //-----------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
