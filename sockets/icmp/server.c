@@ -13,12 +13,12 @@
 #include <netinet/ip_icmp.h> // struct icmphdr
 
 // # Run server on <port>.
-// ./a.out 8000
+// ./a.out
 // 
 // # Test
 // ping -c 1 127.0.0.1
 
-static int get_tunnel(char *port)
+static int get_tunnel()
 {
     struct sockaddr_in server_address;
     
@@ -31,7 +31,6 @@ static int get_tunnel(char *port)
     memset(&server_address, 0, sizeof(server_address));
 
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(atoi(port));
 
     int bd = bind(tunnel, (struct sockaddr *) &server_address, sizeof(server_address));
     if(bd < 0) {
@@ -44,20 +43,15 @@ static int get_tunnel(char *port)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2) {
-        printf("Usage: %s <port>\n", argv[0]);
-        exit(1);
-    }
-
     char buffer[1500];
     // struct icmphdr *ihdr;
     struct sockaddr_in client_address;
     socklen_t addrlen = sizeof(client_address);
 
-    int tunnel = get_tunnel(argv[1]);
+    int tunnel = get_tunnel();
 
     while(1) {
-        printf("Server waiting on port %s\n", argv[1]);
+        printf("Server waiting icmp\n");
 
         int nread = recvfrom(tunnel, buffer, sizeof(buffer), 0, (struct sockaddr *)&client_address, &addrlen);
 
