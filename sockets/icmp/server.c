@@ -5,6 +5,7 @@
 #include <sys/stat.h> // O_RDWR
 #include <sys/types.h> // mode_t for 3 argument in open() function
 #include <sys/ioctl.h> // ioctl()
+#include <sys/socket.h> // socket()
 #include <fcntl.h> // open()
 #include <linux/if.h> // struct ifreq
 #include <linux/if_tun.h> // TUNSETIFF
