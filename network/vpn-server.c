@@ -9,6 +9,7 @@
 #include <unistd.h> // close()
 #include <sys/stat.h> // O_RDWR
 #include <sys/types.h> // mode_t for 3 argument in open() function
+#include <sys/socket.h> // socket()
 #include <sys/ioctl.h> // ioctl()
 #include <fcntl.h> // open()
 #include <linux/if.h> // struct ifreq
@@ -22,24 +23,40 @@
 // # Listen all interfaces
 // ./a.out 0.0.0.0 8000
 //
-// # Check port
-// nc -vz 127.0.0.1 8000
 //
-// # Send http request
-// curl 127.0.0.1:8000
+// # Send udp
+// nc -nvu 127.0.0.1 8000
+// echo -n "123" | nc -u -w1  127.0.0.1 8000
 
 static int get_tunnel(char *ip, char *port)
 {
-    struct sockaddr_in server_address;
+    struct sockaddr_in addr;
     
-    int tunnel = socket(AF_INET, SOCK_STREAM, 0);
+    int tunnel = socket(AF_INET, SOCK_DGRAM, 0);
+    if (tunnel < 0) {
+        return -1;
+    }
 
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = inet_addr(ip);
-    server_address.sin_port = htons(atoi(port));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(ip);
+    addr.sin_port = htons(atoi(port));
 
-    bind(tunnel, (struct sockaddr *) &server_address, sizeof(server_address));
-    listen(tunnel, 5);
+    int bd = bind(tunnel, (struct sockaddr *)&addr, sizeof(addr));
+    if(bd < 0) {
+        return -1;
+    }
+
+    char packet[1024];
+    socklen_t addrlen = sizeof(addr);
+    int n = recvfrom(tunnel, packet, sizeof(packet), 0, (struct sockaddr *)&addr, &addrlen);
+    if (n <= 0) {
+        return -1;
+    }
+
+    printf("Buffer: %s\n", packet);
+
+    // Connect to the client as we only handle one client at a time.
+    connect(tunnel, (struct sockaddr *)&addr, sizeof(addr));
 
     return tunnel;
 }
@@ -51,22 +68,17 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    struct sockaddr_in client_address;
+    printf("Server waiting on %s port %s\n", argv[1], argv[2]);
 
     int tunnel = get_tunnel(argv[1], argv[2]);
-    while(1) {
-        printf("Server waiting on %s port %s\n", argv[1], argv[2]);
+    if(tunnel < 0) {
+        perror("tunnel failed");
+        exit(1);
+    }
 
-        char buffer[1500];
-
-        int len = sizeof(client_address);
-        int client_fd = accept(tunnel, (struct sockaddr*) &client_address, &len);
-        
-        read(client_fd, &buffer, sizeof(buffer));
-        
-        printf("%s", buffer);
-
-        close(client_fd);
+    for (int i = 0; i < 3; ++i) {
+        char *message = "upd message";
+        send(tunnel, message, sizeof(message), MSG_NOSIGNAL);
     }
 
     return 0;
